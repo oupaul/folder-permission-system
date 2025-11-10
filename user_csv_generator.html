@@ -1,0 +1,728 @@
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人員 CSV 生成器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .user-input-area {
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+        }
+        .method-card {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .method-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .method-card.active {
+            border: 2px solid #0d6efd;
+            background: #e7f1ff;
+        }
+        .example-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .preview-table {
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-people"></i> 人員 CSV 生成器
+            </a>
+            <a href="index.html" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-left"></i> 返回主系統
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>功能說明：</strong>此工具可協助您快速生成人員匯入用的 CSV 檔案。請選擇以下任一方式輸入人員資料。
+                </div>
+            </div>
+        </div>
+
+        <!-- Email 模式選擇 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-envelope"></i> Email 處理模式</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="emailMode" id="emailModeAuto" value="auto" checked onchange="toggleEmailMode()">
+                                    <label class="form-check-label" for="emailModeAuto">
+                                        <strong>模式 1：自動生成 Email</strong>
+                                    </label>
+                                </div>
+                                <div class="ms-4 mt-2">
+                                    <small class="text-muted">輸入域名，系統自動根據帳號生成 Email（例：帳號@域名.com）</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="emailMode" id="emailModeManual" value="manual" onchange="toggleEmailMode()">
+                                    <label class="form-check-label" for="emailModeManual">
+                                        <strong>模式 2：手動輸入 Email</strong>
+                                    </label>
+                                </div>
+                                <div class="ms-4 mt-2">
+                                    <small class="text-muted">分別輸入或從 Excel 貼上帳號和 Email</small>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 模式 1：域名輸入（僅在自動生成模式顯示） -->
+                        <div id="domain-input-section" class="mt-3">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Email 域名：</label>
+                                    <input type="text" id="email-domain" class="form-control" placeholder="例如：example.com" value="">
+                                    <small class="text-muted">系統會自動將帳號與此域名組合生成 Email</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 輸入方法選擇 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card method-card active" data-method="paste">
+                    <div class="card-body text-center">
+                        <i class="bi bi-clipboard-check fs-1 text-primary"></i>
+                        <h5 class="card-title mt-2">從 Excel 貼上</h5>
+                        <p class="card-text small">從 Excel 或試算表複製後直接貼上</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card method-card" data-method="manual">
+                    <div class="card-body text-center">
+                        <i class="bi bi-pencil-square fs-1 text-success"></i>
+                        <h5 class="card-title mt-2">手動輸入</h5>
+                        <p class="card-text small">使用表格逐筆輸入人員資料</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方法 1: Excel 貼上 -->
+        <div id="method-paste" class="method-section">
+            <div class="card">
+                <div class="card-header bg-primary">
+                    <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> 方法一：從 Excel 貼上</h5>
+                </div>
+                <div class="card-body">
+                    <div class="example-box">
+                        <strong><i class="bi bi-lightbulb"></i> 使用說明：</strong>
+                        <ol class="mb-0 mt-2" id="paste-instructions">
+                            <li id="paste-instruction-auto" class="mode-auto">在 Excel 中準備人員資料（兩欄：姓名、帳號）</li>
+                            <li id="paste-instruction-manual" class="mode-manual" style="display:none;">在 Excel 中準備人員資料（兩欄：姓名、Email）</li>
+                            <li>選取包含資料的範圍（包含標題行）</li>
+                            <li>複製（Ctrl+C）</li>
+                            <li>貼上到下方的輸入框</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Excel 資料（貼上）：</label>
+                        <textarea id="excel-paste-area" class="form-control user-input-area" 
+                            placeholder="請從 Excel 複製資料並貼上這裡...&#10;&#10;範例格式（自動生成模式）：&#10;姓名	帳號&#10;張三	zhang&#10;李四	li&#10;王五	wang"></textarea>
+                        <div id="paste-placeholder-auto" class="text-muted small mt-2">
+                            <strong>自動生成模式：</strong>只需輸入姓名和帳號，Email 會根據上方設定的域名自動生成
+                        </div>
+                        <div id="paste-placeholder-manual" class="text-muted small mt-2" style="display:none;">
+                            <strong>手動輸入模式：</strong>需要輸入姓名和完整的 Email 地址
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="parseExcelData()">
+                        <i class="bi bi-arrow-right-circle"></i> 解析資料
+                    </button>
+                    
+                    <div id="paste-preview" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方法 2: 手動輸入 -->
+        <div id="method-manual" class="method-section" style="display:none;">
+            <div class="card">
+                <div class="card-header bg-success">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> 方法二：手動輸入</h5>
+                </div>
+                <div class="card-body">
+                    <div class="example-box">
+                        <strong><i class="bi bi-lightbulb"></i> 使用說明：</strong>
+                        <p class="mb-0 mt-2">
+                            使用表格逐筆輸入人員資訊。可設定姓名和 Email。
+                            點擊「新增行」可新增更多人員。
+                        </p>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="manual-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="50">#</th>
+                                    <th>姓名</th>
+                                    <th id="email-header">帳號</th>
+                                    <th width="100">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manual-tbody">
+                                <tr data-row-id="1">
+                                    <td>1</td>
+                                    <td><input type="text" class="form-control form-control-sm user-name-input" placeholder="例：張三"></td>
+                                    <td id="email-cell-1">
+                                        <input type="text" class="form-control form-control-sm user-account-input" placeholder="例：zhang">
+                                    </td>
+                                    <td><button class="btn btn-sm btn-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div id="manual-mode-hint" class="text-muted small mt-2">
+                            <strong>自動生成模式：</strong>輸入帳號，Email 會根據上方設定的域名自動生成（例：帳號@域名.com）
+                        </div>
+                    </div>
+                    <button class="btn btn-success btn-sm" onclick="addRow()">
+                        <i class="bi bi-plus-circle"></i> 新增行
+                    </button>
+                    <button class="btn btn-success mt-2" onclick="parseManualData()">
+                        <i class="bi bi-arrow-right-circle"></i> 產生 CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CSV 預覽和下載區 -->
+        <div class="card mt-4" id="csv-output-section" style="display:none;">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> CSV 輸出結果</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">CSV 內容預覽：</label>
+                        <textarea id="csv-output" class="form-control" rows="12" readonly></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">統計資訊：</label>
+                        <div class="alert alert-info">
+                            <div id="csv-stats"></div>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-danger btn-lg" onclick="directImport()">
+                                <i class="bi bi-cloud-upload-fill"></i> 直接匯入到系統
+                            </button>
+                            <button class="btn btn-success" onclick="downloadCSV()">
+                                <i class="bi bi-download"></i> 下載 CSV 檔案
+                            </button>
+                            <button class="btn btn-primary" onclick="copyToClipboard()">
+                                <i class="bi bi-clipboard"></i> 複製到剪貼簿
+                            </button>
+                            <button class="btn btn-secondary" onclick="reset()">
+                                <i class="bi bi-arrow-counterclockwise"></i> 重新開始
+                            </button>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle-fill"></i> 
+                            <strong>直接匯入說明：</strong>
+                            「直接匯入到系統」按鈕會將生成的人員資料直接傳送到主系統，無需下載和手動上傳。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let parsedData = [];
+
+        // 獲取當前 Email 模式
+        function getEmailMode() {
+            return $('input[name="emailMode"]:checked').val();
+        }
+
+        // 切換 Email 模式
+        function toggleEmailMode() {
+            const mode = getEmailMode();
+            const isAuto = mode === 'auto';
+            
+            // 顯示/隱藏域名輸入框
+            $('#domain-input-section').toggle(isAuto);
+            
+            // 更新 Excel 貼上區域
+            if (isAuto) {
+                $('#paste-instruction-auto').show();
+                $('#paste-instruction-manual').hide();
+                $('#paste-placeholder-auto').show();
+                $('#paste-placeholder-manual').hide();
+                $('#excel-paste-area').attr('placeholder', 
+                    '請從 Excel 複製資料並貼上這裡...\n\n範例格式（自動生成模式）：\n姓名\t帳號\n張三\tzhang\n李四\tli\n王五\twang');
+            } else {
+                $('#paste-instruction-auto').hide();
+                $('#paste-instruction-manual').show();
+                $('#paste-placeholder-auto').hide();
+                $('#paste-placeholder-manual').show();
+                $('#excel-paste-area').attr('placeholder', 
+                    '請從 Excel 複製資料並貼上這裡...\n\n範例格式（手動輸入模式）：\n姓名\tEmail\n張三\tzhang@example.com\n李四\tli@example.com\n王五\twang@example.com');
+            }
+            
+            // 更新手動輸入表格
+            updateManualTable();
+        }
+
+        // 更新手動輸入表格
+        function updateManualTable() {
+            const mode = getEmailMode();
+            const isAuto = mode === 'auto';
+            
+            // 更新表頭
+            $('#email-header').text(isAuto ? '帳號' : 'Email');
+            
+            // 更新所有行的輸入框
+            $('#manual-tbody tr').each(function() {
+                const rowId = $(this).data('row-id');
+                const cell = $(this).find('td').eq(2);
+                
+                if (isAuto) {
+                    cell.html(`<input type="text" class="form-control form-control-sm user-account-input" placeholder="例：zhang">`);
+                } else {
+                    cell.html(`<input type="email" class="form-control form-control-sm user-email-input" placeholder="例：zhang@example.com">`);
+                }
+            });
+            
+            // 更新提示文字
+            if (isAuto) {
+                $('#manual-mode-hint').html('<strong>自動生成模式：</strong>輸入帳號，Email 會根據上方設定的域名自動生成（例：帳號@域名.com）');
+            } else {
+                $('#manual-mode-hint').html('<strong>手動輸入模式：</strong>輸入完整的 Email 地址');
+            }
+        }
+
+        // 生成 Email（根據模式和帳號）
+        function generateEmail(account) {
+            const mode = getEmailMode();
+            if (mode === 'auto') {
+                const domain = $('#email-domain').val().trim();
+                if (!domain) {
+                    alert('⚠️ 請先輸入 Email 域名！');
+                    return '';
+                }
+                if (!account) {
+                    return '';
+                }
+                // 移除域名中可能包含的 @ 符號
+                const cleanDomain = domain.replace(/^@+/, '');
+                return `${account}@${cleanDomain}`;
+            }
+            return account; // 手動模式直接返回輸入的值（即 Email）
+        }
+
+        // 方法選擇切換
+        $(document).on('click', '.method-card', function() {
+            const method = $(this).data('method');
+            $('.method-card').removeClass('active');
+            $(this).addClass('active');
+            $('.method-section').hide();
+            $(`#method-${method}`).show();
+        });
+
+        // 方法 1: 解析 Excel 貼上資料
+        function parseExcelData() {
+            const input = $('#excel-paste-area').val().trim();
+            if (!input) {
+                alert('請先貼上 Excel 資料');
+                return;
+            }
+
+            const mode = getEmailMode();
+            const isAuto = mode === 'auto';
+            
+            // 自動生成模式需要檢查域名
+            if (isAuto) {
+                const domain = $('#email-domain').val().trim();
+                if (!domain) {
+                    alert('⚠️ 請先輸入 Email 域名！');
+                    $('#email-domain').focus();
+                    return;
+                }
+            }
+
+            const lines = input.split('\n');
+            parsedData = [];
+            
+            // 跳過標題行（如果第一行是標題）
+            let startIndex = 0;
+            const firstLine = lines[0].toLowerCase().trim();
+            if (firstLine.includes('姓名') || firstLine.includes('name') || 
+                firstLine.includes('email') || firstLine.includes('mail') ||
+                firstLine.includes('帳號') || firstLine.includes('account')) {
+                startIndex = 1;
+            }
+
+            for (let i = startIndex; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                // 支援 Tab 分隔或空格分隔
+                const parts = line.split(/\t| {2,}/);
+                const name = parts[0] ? parts[0].trim() : '';
+                const accountOrEmail = parts[1] ? parts[1].trim() : '';
+
+                if (name) {
+                    let email = '';
+                    if (isAuto) {
+                        // 自動生成模式：第二欄是帳號
+                        email = generateEmail(accountOrEmail);
+                    } else {
+                        // 手動輸入模式：第二欄是 Email
+                        email = accountOrEmail;
+                    }
+
+                    parsedData.push({
+                        name: name,
+                        email: email || ''
+                    });
+                }
+            }
+
+            if (parsedData.length === 0) {
+                alert('無法解析資料，請檢查格式');
+                return;
+            }
+
+            console.log('Parsed data:', parsedData);
+            displayPreview($('#paste-preview'), parsedData);
+            generateCSV();
+        }
+
+        // 方法 2: 手動輸入
+        function addRow() {
+            const mode = getEmailMode();
+            const isAuto = mode === 'auto';
+            const rowCount = $('#manual-tbody tr').length + 1;
+            
+            const inputField = isAuto 
+                ? `<input type="text" class="form-control form-control-sm user-account-input" placeholder="例：zhang">`
+                : `<input type="email" class="form-control form-control-sm user-email-input" placeholder="例：zhang@example.com">`;
+            
+            const row = `
+                <tr data-row-id="${rowCount}">
+                    <td>${rowCount}</td>
+                    <td><input type="text" class="form-control form-control-sm user-name-input" placeholder="例：姓名"></td>
+                    <td>${inputField}</td>
+                    <td><button class="btn btn-sm btn-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
+                </tr>
+            `;
+            $('#manual-tbody').append(row);
+        }
+
+        function removeRow(btn) {
+            if ($('#manual-tbody tr').length > 1) {
+                $(btn).closest('tr').remove();
+                // 更新行號
+                $('#manual-tbody tr').each(function(index) {
+                    $(this).find('td:first').text(index + 1);
+                    $(this).attr('data-row-id', index + 1);
+                });
+            } else {
+                alert('至少需要保留一行');
+            }
+        }
+
+        function parseManualData() {
+            const mode = getEmailMode();
+            const isAuto = mode === 'auto';
+            
+            // 自動生成模式需要檢查域名
+            if (isAuto) {
+                const domain = $('#email-domain').val().trim();
+                if (!domain) {
+                    alert('⚠️ 請先輸入 Email 域名！');
+                    $('#email-domain').focus();
+                    return;
+                }
+            }
+            
+            parsedData = [];
+            
+            $('#manual-tbody tr').each(function() {
+                const name = $(this).find('.user-name-input').val().trim();
+                let email = '';
+                
+                if (isAuto) {
+                    // 自動生成模式：讀取帳號並生成 Email
+                    const account = $(this).find('.user-account-input').val().trim();
+                    email = generateEmail(account);
+                } else {
+                    // 手動輸入模式：直接讀取 Email
+                    email = $(this).find('.user-email-input').val().trim();
+                }
+
+                if (name) {
+                    parsedData.push({
+                        name: name,
+                        email: email || ''
+                    });
+                }
+            });
+
+            if (parsedData.length === 0) {
+                alert('請至少輸入一個人員');
+                return;
+            }
+
+            generateCSV();
+        }
+
+        // 顯示預覽
+        function displayPreview(container, data) {
+            container.empty();
+            
+            if (data.length === 0) {
+                container.html('<span class="text-muted">沒有資料</span>');
+                return;
+            }
+
+            let html = '<table class="table table-sm table-bordered preview-table"><thead class="table-light"><tr><th>#</th><th>姓名</th><th>Email</th></tr></thead><tbody>';
+            
+            data.forEach((item, index) => {
+                html += `<tr>
+                    <td>${index + 1}</td>
+                    <td>${item.name}</td>
+                    <td>${item.email || '<span class="text-muted">（未填寫）</span>'}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            container.html(html);
+        }
+
+        // 生成 CSV
+        function generateCSV() {
+            if (!parsedData || parsedData.length === 0) {
+                alert('沒有可生成的資料');
+                return;
+            }
+
+            let csvContent = 'type,name,email\n';
+            
+            parsedData.forEach(item => {
+                const name = item.name.includes(',') ? `"${item.name}"` : item.name;
+                const email = item.email.includes(',') ? `"${item.email}"` : item.email;
+                csvContent += `user,${name},${email}\n`;
+            });
+
+            $('#csv-output').val(csvContent);
+            $('#csv-output-section').show();
+
+            // 顯示統計
+            const totalCount = parsedData.length;
+            const withEmailCount = parsedData.filter(item => item.email).length;
+            const withoutEmailCount = totalCount - withEmailCount;
+
+            let stats = `
+                <strong>總人員數：</strong> ${totalCount}<br>
+                <strong>有 Email：</strong> ${withEmailCount}<br>
+                <strong>無 Email：</strong> ${withoutEmailCount}
+            `;
+
+            if (withoutEmailCount > 0) {
+                stats += `<br><div class="text-warning mt-2"><small>⚠️ 有 ${withoutEmailCount} 位人員未填寫 Email</small></div>`;
+            } else {
+                stats += `<br><div class="text-success mt-2"><small>✓ 所有人員都有 Email</small></div>`;
+            }
+
+            $('#csv-stats').html(stats);
+
+            // 滾動到結果區
+            $('html, body').animate({
+                scrollTop: $('#csv-output-section').offset().top - 20
+            }, 500);
+        }
+
+        // 下載 CSV
+        function downloadCSV() {
+            const content = document.getElementById('csv-output').value;
+            if (!content) {
+                alert('沒有可下載的內容');
+                return;
+            }
+
+            // 添加 UTF-8 BOM 以便 Excel 正確顯示中文
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + content], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'users_' + new Date().toISOString().slice(0, 10) + '.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // 複製到剪貼簿
+        function copyToClipboard() {
+            const content = document.getElementById('csv-output').value;
+            if (!content) {
+                alert('沒有可複製的內容');
+                return;
+            }
+
+            navigator.clipboard.writeText(content).then(() => {
+                alert('✓ 已複製到剪貼簿');
+            }).catch(err => {
+                console.error('複製失敗:', err);
+                alert('複製失敗，請手動複製');
+            });
+        }
+
+        // 直接匯入到系統
+        function directImport() {
+            const content = document.getElementById('csv-output').value;
+            
+            if (!content || content.trim() === '') {
+                alert('❌ 沒有可匯入的 CSV 內容！');
+                return;
+            }
+            
+            // 計算人員數量
+            const lines = content.trim().split('\n');
+            const userCount = lines.length - 1; // 扣除標題行
+            
+            // 顯示確認對話框
+            const confirmMsg = `確定要將生成的人員資料直接匯入到系統嗎？\n\n` +
+                `這將會建立 ${userCount} 位人員。\n\n` +
+                `操作說明：\n` +
+                `1. 此操作會建立新的人員資料\n` +
+                `2. 不會重複建立已存在的人員（根據 Email）\n` +
+                `3. 建議先確認資料正確性\n\n` +
+                `是否繼續？`;
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            
+            // 準備 FormData
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const formData = new FormData();
+            formData.append('file', blob, 'users.csv');
+            
+            // 顯示處理中訊息
+            alert('⏳ 正在匯入中，請稍候...');
+            
+            // 發送到後端
+            fetch('/import_csv', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('匯入成功:', data);
+                
+                // 後端返回的字段是 imported（也有 count 向後兼容）
+                const importedCount = data.imported || data.count || 0;
+                const stats = data.stats || {};
+                
+                // 建立詳細統計訊息
+                let statsMsg = '';
+                if (stats.users !== undefined) {
+                    statsMsg = `\n📊 詳細統計：\n人員: ${stats.users}\n`;
+                }
+                
+                const successMsg = `✅ 匯入成功！\n\n` +
+                    `已匯入：${importedCount} 筆資料${statsMsg}\n` +
+                    `💡 提示：\n` +
+                    `• 前往「人員管理」查看人員列表\n` +
+                    `• 可在「群組管理」中將人員加入群組\n\n` +
+                    `📝 說明：\n` +
+                    `• 如果人員已存在（相同 Email），不會重複建立\n` +
+                    `• 實際建立的人員數量可能少於匯入筆數`;
+                
+                alert(successMsg);
+                
+                // 詢問是否要切換到主系統
+                if (confirm('是否要開啟主系統查看結果？')) {
+                    window.open('/index.html', '_blank');
+                }
+            })
+            .catch(error => {
+                console.error('匯入失敗:', error);
+                
+                const errorMsg = `❌ 匯入失敗！\n\n` +
+                    `錯誤訊息：${error.message}\n\n` +
+                    `可能原因：\n` +
+                    `1. 主系統未啟動\n` +
+                    `2. 網路連線問題\n` +
+                    `3. CSV 格式錯誤\n\n` +
+                    `建議：\n` +
+                    `• 檢查主系統是否正常運作\n` +
+                    `• 或使用「下載 CSV 檔案」後手動匯入`;
+                
+                alert(errorMsg);
+            });
+        }
+
+        // 重新開始
+        function reset() {
+            if (confirm('確定要清除所有資料並重新開始嗎？')) {
+                parsedData = [];
+                $('#excel-paste-area').val('');
+                $('#paste-preview').empty();
+                $('#email-domain').val('');
+                $('#manual-tbody').html(`
+                    <tr data-row-id="1">
+                        <td>1</td>
+                        <td><input type="text" class="form-control form-control-sm user-name-input" placeholder="例：張三"></td>
+                        <td id="email-cell-1">
+                            <input type="text" class="form-control form-control-sm user-account-input" placeholder="例：zhang">
+                        </td>
+                        <td><button class="btn btn-sm btn-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                `);
+                $('#csv-output').val('');
+                $('#csv-output-section').hide();
+                $('#csv-stats').empty();
+                // 重新更新表格以符合當前模式
+                updateManualTable();
+            }
+        }
+
+        // 頁面載入時初始化
+        $(document).ready(function() {
+            toggleEmailMode();
+        });
+    </script>
+</body>
+</html>
+
+
