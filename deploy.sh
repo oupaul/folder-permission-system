@@ -213,7 +213,7 @@ echo ""
 echo "檢查並設定 public 資料夾..."
 
 # 檢查 HTML 檔案位置
-HTML_FILES=("index.html" "login.html" "index_old.html")
+HTML_FILES=("index.html" "login.html" "csv_generator.html" "user_csv_generator.html" "permission_generator.html")
 FILES_TO_MOVE=()
 
 for FILE in "${HTML_FILES[@]}"; do
